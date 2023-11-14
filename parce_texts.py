@@ -28,20 +28,18 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, lik
 MIN_TIME_SLEEP = .5
 MAX_TIME_SLEEP = 10
 MAX_COUNTS = 10
-TIMEOUT = 5
+MAX_ARTS = 1000
+TIMEOUT = 30
 
 class TextCollector():
-    def __init__(self, user_agent, timeout, max_counts, 
-                 min_time_sleep, max_time_sleep, 
-                 s3_access_file, base_url,
-                 proxies=None, file_content=False):
+    def __init__(self, base_url, user_agent, timeout, max_counts, 
+                 min_time_sleep, max_time_sleep, s3_access_file):
+        self.base_url = base_url
         self.user_agent = user_agent
         self.timeout = timeout
         self.max_counts = max_counts
         self.min_time_sleep = min_time_sleep
         self.max_time_sleep = max_time_sleep
-        self.proxies = proxies
-        self.file_content = file_content
         opts = FirefoxOptions()
         opts.add_argument('--headless')
         self.browser = webdriver.Firefox(options=opts)
@@ -56,51 +54,21 @@ class TextCollector():
             endpoint_url='http://storage.yandexcloud.net'
         )
         self.bucket = self.access_data['bucket']
-        self.base_url = base_url
     
     def search_words(self, file_path):
         with open(file_path) as file:
             lines = [line.rstrip() for line in file]
         return lines
     
-    def urls_collect(self, lines):
-        urls = []
-        for lc, line in enumerate(lines):
-            search_words = [x.strip() for x in line.split(',')]
-            search = ' '.join(search_words)
-            print(lc, 'search words:', search_words)
-            url = f'https://{self.base_url}.ru/search?q={quote(search)}'
-            self.browser.get(url)
-            pages = self.browser.find_elements(
-                By.XPATH, 
-                '//*[@id="body"]/div[3]/div/div[1]/ul/li[*]'
-            )
-            sleep(uniform(self.min_time_sleep, self.max_time_sleep))
-            for page in range(1, len(pages) + 1):
-                print('page', page, end=' ')
-                url = f'https://{self.base_url}.ru/search?q={quote(search)}&page={page}'
-                self.browser.get(url)
-                articles = self.browser.find_elements(
-                    By.XPATH, 
-                    '//*[@id="search-results"]/li[*]/h2/a'
-                )
-                for a in articles:
-                    urls.append(a.get_attribute('href'))
-                print('done')
-                sleep(uniform(self.min_time_sleep, self.max_time_sleep))
-        print('urls collected:', len(urls))
-        urls = list(set(urls))
-        print('unique urls:', len(urls))
-        return urls
-    
-    def parce_content(self, url_page):
+    def parce_content(self, url_page, 
+                      proxies=None, file_content=False, json_data=None):
         counts = 0
         content = None
         while counts < self.max_counts:
             try:
                 request = Request(url_page)
                 request.add_header('User-Agent', self.user_agent)
-                if self.proxies:
+                if proxies:
                     proxy_support = ProxyHandler(proxies)
                     opener = build_opener(proxy_support)
                     install_opener(opener)
@@ -111,8 +79,15 @@ class TextCollector():
                         timeout=self.timeout
                     )
                 else:
-                    response = urlopen(request, timeout=self.timeout)
-                if self.file_content:
+                    if json_data:
+                        response = urlopen(
+                            request, 
+                            data=json.dumps(json_data).encode('utf-8'),
+                            timeout=self.timeout
+                        )
+                    else:
+                        response = urlopen(request, timeout=self.timeout)
+                if file_content:
                     content = response.read()
                 else:
                     try:
@@ -141,6 +116,33 @@ class TextCollector():
                     counts * self.min_time_sleep, counts * self.max_time_sleep
                 ))
         return content
+    
+    def urls_collect(self, lines, max_arts=1000):
+        urls = []
+        for lc, line in enumerate(lines):
+            search_words = [x.strip() for x in line.split(',')]
+            search = ' '.join(search_words)
+            print(lc, '| search words:', search, end=' ')
+            data = {
+                'mode': 'articles',
+                'q': search,
+                'size': max_arts,
+                'from': 0
+            }
+            content = self.parce_content(
+                url_page=self.base_url + '/api/search',
+                proxies=None, 
+                file_content=True, 
+                json_data=data
+            )
+            content = json.loads(content)
+            urls.extend([self.base_url + x['link'] for x in content['articles']])
+            print('| found articles:', len(content['articles']))
+            sleep(uniform(self.min_time_sleep, self.max_time_sleep))
+        print('urls collected:', len(urls))
+        urls = list(set(urls))
+        print('unique urls:', len(urls))
+        return urls
     
     def text_collect(self, url):
         html = self.parce_content(url)
@@ -194,6 +196,7 @@ class TextCollector():
                 file_path = f'{prefix}_{num_str}.json'
                 self.s3_write(data, file_path)
                 sleep(uniform(self.min_time_sleep, self.max_time_sleep))
+                print('')
             return True
         except Exception as e:
             return e
@@ -209,7 +212,7 @@ def main():
         :prefix: prefix for files to be saved into s3 bucket
         :start_num: number to be inserted to start file name
         
-     example: python parce_texts.py cyberleninka search.txt sgd_article 7
+     example: python parce_texts.py https://cyberleninka.ru search.txt sgd_article 7
     
     """
     base_url = sys.argv[1]
@@ -218,25 +221,25 @@ def main():
     start_num = int(sys.argv[4])
     
     collector = TextCollector(
+        base_url=base_url,
         user_agent=USER_AGENT, 
         timeout=TIMEOUT, 
         max_counts=MAX_COUNTS,
         min_time_sleep=MIN_TIME_SLEEP, 
         max_time_sleep=MAX_TIME_SLEEP,
-        s3_access_file='access_s3_labeling.json',
-        base_url = base_url,
-        proxies=None, 
-        file_content=False
+        s3_access_file='access_s3_labeling.json'
     )
     lines = collector.search_words(search_file)
-    urls = collector.urls_collect(lines)
+    urls = collector.urls_collect(lines, max_arts=MAX_ARTS)
     result = collector.s3_write_many(
         urls,
         prefix=prefix, 
         start_num=start_num
     )
-    print(result)
-    print('finished')
+    if result == True:
+        print('finished')
+    else: 
+        print('ERROR', result)
 
 if __name__ == '__main__':
     main()
