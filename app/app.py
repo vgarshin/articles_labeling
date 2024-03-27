@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import os
 import json
 import requests
@@ -17,7 +20,7 @@ URL_SERVER_2 = 'http://{}:{}/label'.format(IP, PORT)
 HEADER = {'Content-type': 'application/json'}
 
 st.header('AI-модель выявления ЦУР', divider='rainbow')
-st.subheader('Классификация научных статей для определения Целей в области устойчивого развития (ЦУР) в тексте')
+st.subheader('Классификация научных статей для определения Целей в области устойчивого развития (ЦУР) ООН по аннотации или тексту публикации ')
 st.divider()
 
 r = requests.get(
@@ -44,9 +47,16 @@ if text:
     preds = [(preds['legend'][k], round(v * 100)) for k, v in preds['predictions'].items()]
     df = pd.DataFrame(
         preds,
-        columns=['target', 'score']
+        columns=['ЦУР', 'вероятность']
     )
-    df = df.set_index('target')
+    df = df.set_index('ЦУР')
+    st.divider()
+    st.subheader('Результат оценки текста на предмет наличия ЦУР')
+    for idx, row in df[df['вероятность'] > 50].iterrows():
+        st.metric(
+            label=idx, 
+            value=f'{row["вероятность"]}%'
+        )    
     st.divider()
     st.write('Вероятность упоминания ЦУР в статье, %')
     st.bar_chart(df)
