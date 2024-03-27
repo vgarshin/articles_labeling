@@ -69,7 +69,7 @@ class BERTClass(torch.nn.Module):
         return output
 
 class ArticlesPredictor():
-    def __init__(self, model_name, target_cols, max_seq_len,
+    def __init__(self, model_name, target_cols, max_seq_len, s3,
                  device, batch_size, num_workers, model_files):
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
         self.max_seq_len = max_seq_len
@@ -148,7 +148,7 @@ def theme_validate_label():
             errors.append('field {} is missing or is not a string'.format(field_name))
     return (jsn, errors)
 
-CREDS = read_json(file_path='../configs/access_bucket.json')
+CREDS = read_json(file_path='configs/access_bucket.json')
 SESSION = boto3.session.Session()
 S3 = SESSION.client(
     service_name='s3',
@@ -156,16 +156,16 @@ S3 = SESSION.client(
     aws_secret_access_key=CREDS['aws_secret_access_key'],
     endpoint_url=CREDS['endpoint_url'] 
 )
-APP_CONFIG = read_json(file_path='../configs/config.json')
+APP_CONFIG = read_json(file_path='configs/config.json')
 PORT = APP_CONFIG["port"]
 CONFIG = json.load(
-    s3.get_object(
+    S3.get_object(
         Bucket=CREDS['name'], 
         Key=f'{APP_CONFIG["model"]}/config.json'
     )['Body']
 )
 MODEL_FILES = json.load(
-    s3.get_object(
+    S3.get_object(
         Bucket=CREDS['name'], 
         Key=f'{APP_CONFIG["model"]}/model_files.json'
     )['Body']
@@ -178,11 +178,14 @@ PREDICTOR = ArticlesPredictor(
     model_name=CONFIG['bbone'], 
     target_cols=CONFIG['target_cols'], 
     max_seq_len=CONFIG['max_seq_len'],
+    s3=S3,
     device='cpu', 
     batch_size=1, 
     num_workers=1, 
     model_files=MODEL_FILES
 )
+
+app = Flask(__name__)
 
 @app.route('/label', methods=['POST'])
 def model_label():
