@@ -7,6 +7,13 @@ services:
       - 40000:40000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
+  server_long_lbl:
+    build: dockerfiledsailbl/
+    command: python server/server_long.py
+    ports:
+      - 50000:50000
+    volumes:
+      - /home/simbauser/articles_labeling:/home/jovyan/
   client_lbl:
     build: dockerfiledsailbl/
     command: streamlit run app/app.py --server.port 30000 --browser.gatherUsageStats False

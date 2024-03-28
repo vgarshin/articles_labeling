@@ -19,8 +19,22 @@ URL_SERVER_1 = 'http://{}:{}/model'.format(IP, PORT)
 URL_SERVER_2 = 'http://{}:{}/label'.format(IP, PORT)
 HEADER = {'Content-type': 'application/json'}
 
-st.header('AI-модель выявления ЦУР', divider='rainbow')
-st.subheader('Классификация научных статей для определения Целей в области устойчивого развития (ЦУР) ООН по аннотации или тексту публикации ')
+st.set_page_config(
+    page_title='Анализ по аннотации', 
+    page_icon=':bar_chart:'
+)
+
+st.sidebar.header('Анализ по аннотации')
+st.header('AI-модель выявления ЦУР по аннотациям', divider='rainbow')
+
+st.markdown(
+    """
+    Используемая в этом разделе LLM модель обучена на 1000+ 
+    размеченных статей. При обучении использовались аннотации
+    к научным статьям, поэтому для выявления ЦУР следует загружать 
+    в форму ниже текст аннотации длиной не более 500 слов.
+    """
+)
 st.divider()
 
 r = requests.get(
@@ -29,12 +43,22 @@ r = requests.get(
     verify=True
 )
 model_info = r.json()['data']
-st.write('Версия модели:', APP_CONFIG['model'])
-st.write('Основа модели:', model_info['bbone'])
-st.write('Количество ЦУР в модели:', str(len(model_info['target_cols'])))
+target_names = ', '.join([
+    v for k, v in model_info['targets_description'].items()
+    if 'отсутствуют' not in v
+])
+st.markdown(
+    f"""
+    #### Данные о модели
+    **Версия модели:** {APP_CONFIG['model']}\n
+    **Основа модели:** {model_info['bbone']}\n
+    **ЦУР в модели:** {target_names}
+    """
+)
 st.divider()
 
-text = st.text_area('Введите аннотацию (не более 500 символов)', '')
+st.write('#### Введите аннотацию')
+text = st.text_area('Скопируйте текст в область ниже (не более 500 слов)', '')
 if text:
     data = {'text': text} 
     r = requests.post(
