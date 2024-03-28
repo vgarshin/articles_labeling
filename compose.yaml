@@ -16,7 +16,7 @@ services:
       - /home/simbauser/articles_labeling:/home/jovyan/
   client_lbl:
     build: dockerfiledsailbl/
-    command: streamlit run app/app.py --server.port 30000 --browser.gatherUsageStats False
+    command: streamlit run app/Main_page.py --server.port 30000 --browser.gatherUsageStats False --server.enableXsrfProtection false
     ports:
       - 30000:30000
     depends_on:
