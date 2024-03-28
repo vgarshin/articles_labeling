@@ -14,7 +14,7 @@ def read_json(file_path):
     return access_data
 
 APP_CONFIG = read_json(file_path='configs/config.json')
-PORT = APP_CONFIG['port']
+PORT = APP_CONFIG['port_long']
 IP = APP_CONFIG['ip']
 URL_SERVER_1 = 'http://{}:{}/model'.format(IP, PORT)
 URL_SERVER_2 = 'http://{}:{}/label'.format(IP, PORT)

@@ -21,5 +21,6 @@ services:
       - 30000:30000
     depends_on:
       - server_lbl
+      - server_long_lbl
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
