@@ -5,7 +5,9 @@ import os
 import io
 import sys
 import json
+import time
 import boto3
+import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -184,11 +186,21 @@ PREDICTOR = ArticlesPredictor(
     num_workers=1, 
     model_files=MODEL_FILES
 )
+LOG_PATH = 'logs'
+if not os.path.exists(LOG_PATH):
+    os.makedirs(LOG_PATH)
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f'{LOG_PATH}/server.log')
+LOGGER.addHandler(fh)
+formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+fh.setFormatter(formatter)
 
 app = Flask(__name__)
 
 @app.route('/label', methods=['POST'])
 def model_label():
+    start_time = time.time()
     (jsn, errors) = theme_validate_label()
     if errors:
         return resp(400, {'errors': errors})
@@ -202,6 +214,13 @@ def model_label():
     data = {}
     data['legend'] = CONFIG['targets_description']
     data['predictions'] = preds
+    msg = 'version {} - {} words, {} symbols - {} seconds'.format(
+        APP_CONFIG['model'],
+        len(jsn['text'].split()),
+        len(jsn['text']),
+        int(time.time() - start_time)
+    )
+    LOGGER.info(msg)
     return resp(200, {'data' : data})
 
 @app.route('/model', methods=['GET'])
