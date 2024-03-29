@@ -51,7 +51,7 @@ target_names = ', '.join([
 st.markdown(
     f"""
     #### Данные о модели
-    **Версия модели:** {APP_CONFIG['model']}\n
+    **Версия модели:** {APP_CONFIG['model_long']}\n
     **Основа модели:** {model_info['bbone']}\n
     **ЦУР в модели:** {target_names}
     """
@@ -61,32 +61,37 @@ st.divider()
 st.write('#### Загрузите текст статьи')
 uploaded_file = st.file_uploader('Выберите файл (в формате TXT)')
 if uploaded_file is not None:
-    bytes_data = uploaded_file.read()
-    st.write("filename:", uploaded_file.name)
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    data = {'text': stringio.read()} 
-    r = requests.post(
-        URL_SERVER_2,
-        data=json.dumps(data),
-        headers=HEADER,
-        verify=True
-    )
-    preds = r.json()['data']
-    preds = [(preds['legend'][k], round(v * 100)) for k, v in preds['predictions'].items()]
-    df = pd.DataFrame(
-        preds,
-        columns=['ЦУР', 'вероятность']
-    )
-    df = df.set_index('ЦУР')
-    st.divider()
-    st.subheader('Результат оценки текста на предмет наличия ЦУР')
-    for idx, row in df[df['вероятность'] > 50].iterrows():
-        st.metric(
-            label=idx, 
-            value=f'{row["вероятность"]}%'
-        )    
-    st.divider()
-    st.write('Вероятность упоминания ЦУР в статье, %')
-    st.bar_chart(df)
+    file_name = uploaded_file.name
+    if '.txt' in file_name:
+        with st.spinner('Подождите, модель внимательно изучает текст...'):
+            bytes_data = uploaded_file.read()
+            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+            data = {'text': stringio.read()} 
+            r = requests.post(
+                URL_SERVER_2,
+                data=json.dumps(data),
+                headers=HEADER,
+                verify=True
+            )
+            preds = r.json()['data']
+            preds = [(preds['legend'][k], round(v * 100)) for k, v in preds['predictions'].items()]
+            df = pd.DataFrame(
+                preds,
+                columns=['ЦУР', 'вероятность']
+            )
+            df = df.set_index('ЦУР')
+            st.divider()
+            st.subheader('Результат оценки текста на предмет наличия ЦУР')
+            for idx, row in df[df['вероятность'] > 50].iterrows():
+                st.metric(
+                    label=idx, 
+                    value=f'{row["вероятность"]}%'
+                )    
+            st.divider()
+            st.write('Вероятность упоминания ЦУР в статье, %')
+            st.bar_chart(df)
+        st.success('Анализ завершен')
+    else:
+        st.error('Ошибка чтения файла', icon='⚠️')
 
 

@@ -60,27 +60,29 @@ st.divider()
 st.write('#### Введите аннотацию')
 text = st.text_area('Скопируйте текст в область ниже (не более 500 слов)', '')
 if text:
-    data = {'text': text} 
-    r = requests.post(
-        URL_SERVER_2,
-        data=json.dumps(data),
-        headers=HEADER,
-        verify=True
-    )
-    preds = r.json()['data']
-    preds = [(preds['legend'][k], round(v * 100)) for k, v in preds['predictions'].items()]
-    df = pd.DataFrame(
-        preds,
-        columns=['ЦУР', 'вероятность']
-    )
-    df = df.set_index('ЦУР')
-    st.divider()
-    st.subheader('Результат оценки текста на предмет наличия ЦУР')
-    for idx, row in df[df['вероятность'] > 50].iterrows():
-        st.metric(
-            label=idx, 
-            value=f'{row["вероятность"]}%'
-        )    
-    st.divider()
-    st.write('Вероятность упоминания ЦУР в статье, %')
-    st.bar_chart(df)
+    with st.spinner('Подождите, модель внимательно изучает текст...'):
+        data = {'text': text} 
+        r = requests.post(
+            URL_SERVER_2,
+            data=json.dumps(data),
+            headers=HEADER,
+            verify=True
+        )
+        preds = r.json()['data']
+        preds = [(preds['legend'][k], round(v * 100)) for k, v in preds['predictions'].items()]
+        df = pd.DataFrame(
+            preds,
+            columns=['ЦУР', 'вероятность']
+        )
+        df = df.set_index('ЦУР')
+        st.divider()
+        st.subheader('Результат оценки текста на предмет наличия ЦУР')
+        for idx, row in df[df['вероятность'] > 50].iterrows():
+            st.metric(
+                label=idx, 
+                value=f'{row["вероятность"]}%'
+            )    
+        st.divider()
+        st.write('Вероятность упоминания ЦУР в статье, %')
+        st.bar_chart(df)
+    st.success('Анализ завершен')
