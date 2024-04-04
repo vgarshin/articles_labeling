@@ -14,7 +14,7 @@ services:
       - 50000:50000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
-  server_long_lbl:
+  server_xlong_lbl:
     build: dockerfiledsailbl/
     command: python server/server_long.py xlong
     ports:
