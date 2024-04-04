@@ -19,24 +19,6 @@ URL_SERVER_1 = 'http://{}:{}/model'.format(IP, PORT)
 URL_SERVER_2 = 'http://{}:{}/label'.format(IP, PORT)
 HEADER = {'Content-type': 'application/json'}
 
-st.set_page_config(
-    page_title='Анализ по аннотации', 
-    page_icon=':bar_chart:'
-)
-
-st.sidebar.header('Анализ по аннотации')
-st.header('AI-модель выявления ЦУР по аннотациям', divider='rainbow')
-
-st.markdown(
-    """
-    Используемая в этом разделе LLM модель обучена на 1000+ 
-    размеченных статей. При обучении использовались аннотации
-    к научным статьям, поэтому для выявления ЦУР следует загружать 
-    в форму ниже текст аннотации длиной не более 500 слов.
-    """
-)
-st.divider()
-
 r = requests.get(
     URL_SERVER_1,
     headers=HEADER,
@@ -47,6 +29,23 @@ target_names = ', '.join([
     v for k, v in model_info['targets_description'].items()
     if 'отсутствуют' not in v
 ])
+
+st.set_page_config(
+    page_title='Анализ по аннотации', 
+    page_icon=':bar_chart:'
+)
+st.sidebar.header('Анализ по аннотации')
+st.header('AI-модель выявления ЦУР по аннотациям', divider='rainbow')
+st.markdown(
+    f"""
+    Используемая в этом разделе LLM модель обучена на 1000+ 
+    размеченных статей. При обучении использовались аннотации
+    к научным статьям, поэтому для выявления ЦУР следует загружать 
+    в форму ниже текст аннотации длиной не более 
+    {model_info['max_seq_len']} слов.
+    """
+)
+st.divider()
 st.markdown(
     f"""
     #### Данные о модели

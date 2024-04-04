@@ -14,7 +14,7 @@ def read_json(file_path):
     return access_data
 
 APP_CONFIG = read_json(file_path='configs/config.json')
-PORT = APP_CONFIG['port_long']
+PORT = APP_CONFIG['port_xlong']
 IP = APP_CONFIG['ip']
 URL_SERVER_1 = 'http://{}:{}/model'.format(IP, PORT)
 URL_SERVER_2 = 'http://{}:{}/label'.format(IP, PORT)
@@ -32,7 +32,7 @@ target_names = ', '.join([
 ])
 
 st.set_page_config(
-    page_title='Анализ текста', 
+    page_title='Анализ большого текста', 
     page_icon=':microscope:'
 )
 st.sidebar.header(f'Анализ текста до {model_info["max_seq_len"]} слов')
@@ -51,7 +51,7 @@ st.divider()
 st.markdown(
     f"""
     #### Данные о модели
-    **Версия модели:** {APP_CONFIG['model_long']}\n
+    **Версия модели:** {APP_CONFIG['model_xlong']}\n
     **Основа модели:** {model_info['bbone']}\n
     **ЦУР в модели:** {target_names}
     """
