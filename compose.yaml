@@ -9,9 +9,16 @@ services:
       - /home/simbauser/articles_labeling:/home/jovyan/
   server_long_lbl:
     build: dockerfiledsailbl/
-    command: python server/server_long.py
+    command: python server/server_long.py long
     ports:
       - 50000:50000
+    volumes:
+      - /home/simbauser/articles_labeling:/home/jovyan/
+  server_long_lbl:
+    build: dockerfiledsailbl/
+    command: python server/server_long.py xlong
+    ports:
+      - 60000:60000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
   client_lbl:

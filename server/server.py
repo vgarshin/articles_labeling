@@ -55,9 +55,12 @@ class ArticlesDataset(torch.utils.data.Dataset):
         }
 
 class BERTClass(torch.nn.Module):
-    def __init__(self, model_name, target_cols):
+    def __init__(self, model_name, target_cols, dropout=None):
         super(BERTClass, self).__init__()
         self.rubert = AutoModel.from_pretrained(model_name)
+        if dropout:
+            self.dropout = dropout
+            self.l2 = torch.nn.Dropout(dropout)
         self.fc = torch.nn.Linear(768, len(target_cols))
     
     def forward(self, ids, mask, token_type_ids):
@@ -67,6 +70,9 @@ class BERTClass(torch.nn.Module):
             token_type_ids=token_type_ids, 
             return_dict=False
         )
+        if self.dropout: 
+            x = self.l2(features)
+            output = self.fc(x)
         output = self.fc(features)
         return output
 
@@ -83,7 +89,8 @@ class ArticlesPredictor():
         for m_name in model_files:
             m = BERTClass(
                 model_name=model_name, 
-                target_cols=target_cols
+                target_cols=target_cols,
+                dropout=CONFIG['dropout']
             )
             m.to(device)
             get_object_response = s3.get_object(
@@ -226,6 +233,12 @@ def model_label():
 @app.route('/model', methods=['GET'])
 def model_config():
     return resp(200, {'data' : CONFIG})
+
+@app.route('/logs', methods=['GET'])
+def model_logs():
+    with open(f'{LOG_PATH}/server.log') as file:
+        logs = file.readlines()
+    return resp(200, {'data' : logs})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=True, use_reloader=False)

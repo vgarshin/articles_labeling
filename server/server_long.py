@@ -61,10 +61,16 @@ class ArticlesDataset(torch.utils.data.Dataset):
         }
 
 class LongformerArticlesLabeling(torch.nn.Module):
-    def __init__(self, model_name, target_cols):
+    def __init__(self, model_name, target_cols, dropout=None):
         super(LongformerArticlesLabeling, self).__init__()
         self.longformer = AutoModel.from_pretrained(model_name)
-        self.fc = torch.nn.Linear(768, len(target_cols))
+        if dropout:
+            self.dropout = dropout
+            self.l2 = torch.nn.Dropout(dropout)
+        if 'tiny' in model_name:
+            self.fc = torch.nn.Linear(312, len(target_cols))
+        else:
+            self.fc = torch.nn.Linear(768, len(target_cols))
         
     def forward(self, input_ids=None, attention_mask=None, 
                 global_attention_mask=None, 
@@ -81,6 +87,9 @@ class LongformerArticlesLabeling(torch.nn.Module):
             position_ids = position_ids,
             return_dict=False
         )
+        if self.dropout: 
+            x = self.l2(features)
+            output = self.fc(x)
         output = self.fc(features)
         return output
 
@@ -97,7 +106,8 @@ class ArticlesPredictor():
         for m_name in model_files:
             m = LongformerArticlesLabeling(
                 model_name=model_name, 
-                target_cols=target_cols
+                target_cols=target_cols,
+                dropout=CONFIG['dropout']
             )
             m.to(device)
             get_object_response = s3.get_object(
@@ -164,6 +174,7 @@ def theme_validate_label():
             errors.append('field {} is missing or is not a string'.format(field_name))
     return (jsn, errors)
 
+mtype = sys.argv[1] # model type should be `long` or `xlong`
 CREDS = read_json(file_path='configs/access_bucket.json')
 SESSION = boto3.session.Session()
 S3 = SESSION.client(
@@ -173,21 +184,21 @@ S3 = SESSION.client(
     endpoint_url=CREDS['endpoint_url'] 
 )
 APP_CONFIG = read_json(file_path='configs/config.json')
-PORT = APP_CONFIG['port_long']
+PORT = APP_CONFIG[f'port_{mtype}']
 CONFIG = json.load(
     S3.get_object(
         Bucket=CREDS['name'], 
-        Key=f'{APP_CONFIG["model_long"]}/config.json'
+        Key=f'{APP_CONFIG[f"model_{mtype}"]}/config.json'
     )['Body']
 )
 MODEL_FILES = json.load(
     S3.get_object(
         Bucket=CREDS['name'], 
-        Key=f'{APP_CONFIG["model_long"]}/model_files.json'
+        Key=f'{APP_CONFIG[f"model_{mtype}"]}/model_files.json'
     )['Body']
 )
 MODEL_FILES = [
-    f'{APP_CONFIG["model_long"]}/{x.split("/")[-1]}'
+    f'{APP_CONFIG[f"model_{mtype}"]}/{x.split("/")[-1]}'
     for x in MODEL_FILES
 ]
 PREDICTOR = ArticlesPredictor(
@@ -205,7 +216,7 @@ if not os.path.exists(LOG_PATH):
     os.makedirs(LOG_PATH)
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
-fh = logging.FileHandler(f'{LOG_PATH}/server_long.log')
+fh = logging.FileHandler(f'{LOG_PATH}/server_{mtype}.log')
 LOGGER.addHandler(fh)
 formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
 fh.setFormatter(formatter)
@@ -240,6 +251,12 @@ def model_label():
 @app.route('/model', methods=['GET'])
 def model_config():
     return resp(200, {'data' : CONFIG})
+
+@app.route('/logs', methods=['GET'])
+def model_logs():
+    with open(f'{LOG_PATH}/server_{mtype}.log') as file:
+        logs = file.readlines()
+    return resp(200, {'data' : logs})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=True, use_reloader=False)
