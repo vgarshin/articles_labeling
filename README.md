@@ -3,7 +3,7 @@ Experimental AI service for articles classification with respect to SDG or [Sust
 
 ## Goal
 
-Build an AI service to classify arbitary text and find SDG that can be found in that text.
+Build an AI service to classify arbitary text and find SDG in that text.
 
 ## Tools
 
@@ -13,16 +13,22 @@ Build an AI service to classify arbitary text and find SDG that can be found in 
 
 About 1000+ articles were manually labeled by selected 5 goals (multilabel problem).
 
-[Object Storage](https://yandex.cloud/en/docs/storage/quickstart) bucket for the course data, [Yandex Managed Service for OpenSearch](https://cloud.yandex.com/en/docs/managed-opensearch/) instance as a database. [Virtual machine](https://cloud.yandex.com/en/docs/compute/quickstart/) with Docker installed.
+[Object Storage](https://yandex.cloud/en/docs/storage/quickstart) bucket to store data and trained models, [JupyterHub SimBA platform](https://jhas01.gsom.spbu.ru) to process data and train models (GPU required). [Virtual machine](https://cloud.yandex.com/en/docs/compute/quickstart/) with Docker installed to run service.
 
-Credentials to access object storage bucket, database and YandexGPT API in a form of JSON files `configs/config_SAMPLE.json` and `configs/credentials_SAMPLE.json`.
+Configuration parameters and credentials to access object storage bucket are JSON files `configs/config.json` and `configs/access_bucket.json`.
 
 ## Manual
+
+### Part 1. Train a model
+
+Notebooks for models fine-tuning are in `notebooks/` folder.
+
+### Part 2. Run a service
 
 Build an image to run all services, image is based on image for Data Science environment at the platform [GSOM JupyterHub](https://github.com/vgarshin/gsom_jhub_deploy). Command to build:
 
 ```bash
-sudo docker build -t mibadsaitel dockerfiledsaitel
+sudo docker build -t mibadsailbl dockerfiledsailbl
 ```
 
 Start service for AI course assistant with `docker compose` to run all applications at once:
