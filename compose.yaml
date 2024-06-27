@@ -7,6 +7,10 @@ services:
       - 40000:40000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
+    healthcheck:
+      test: curl --fail -s http://localhost:40000/model || exit 1
+      interval: 1m
+      timeout: 1m
   server_long_lbl:
     build: dockerfiledsailbl/
     command: python server/server_long.py long
@@ -14,6 +18,10 @@ services:
       - 50000:50000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
+    healthcheck:
+      test: curl --fail -s http://localhost:50000/model || exit 1
+      interval: 1m
+      timeout: 1m
   server_xlong_lbl:
     build: dockerfiledsailbl/
     command: python server/server_long.py xlong
@@ -21,6 +29,10 @@ services:
       - 60000:60000
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
+    healthcheck:
+      test: curl --fail -s http://localhost:60000/model || exit 1
+      interval: 1m
+      timeout: 1m
   client_lbl:
     build: dockerfiledsailbl/
     command: streamlit run app/Main_page.py --server.port 30000 --browser.gatherUsageStats False --server.enableXsrfProtection false
@@ -31,3 +43,7 @@ services:
       - server_long_lbl
     volumes:
       - /home/simbauser/articles_labeling:/home/jovyan/
+    healthcheck:
+      test: curl --fail -s http://localhost:30000 || exit 1
+      interval: 1m
+      timeout: 1m
